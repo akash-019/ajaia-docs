@@ -3,7 +3,8 @@
 ## Links
 
 - **Live app:** https://ajaia-docs-asjy.onrender.com
-- **Walkthrough video:** _TODO_ (also in [VIDEO_URL.txt](VIDEO_URL.txt))
+- **Walkthrough video:** https://drive.google.com/file/d/1wWkQDs35DOtcWSzBsJA7RZ2svRgDFbGH/view?usp=sharing (also in [VIDEO_URL.txt](VIDEO_URL.txt))
+- **Source code:** https://github.com/akash-019/ajaia-docs
 - **Time spent:** _TODO: hours_
 
 > **Before you test the live app:** it runs on Render's free plan. That plan sleeps after about 15 minutes without traffic, so the first request after a pause can take about a minute, and **data resets whenever it restarts**. If a document you created is gone after a break, that's why. The demo accounts and the shared "Welcome to Ajaia Docs" document are always re-created. Everything persists normally when run locally (see [README.md](README.md)).
@@ -28,6 +29,7 @@ All accounts use the password **`demo1234`**. These are the only accounts: there
 | Source: UI (Angular 21, TipTap) | [ajaia-docs-ui/](ajaia-docs-ui/) |
 | Setup and run instructions | [README.md](README.md) |
 | Architecture note | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Project overview (flow, tech stack, tools, features) | [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) |
 | AI workflow note | [AI_WORKFLOW.md](AI_WORKFLOW.md) |
 | Walkthrough video URL | [VIDEO_URL.txt](VIDEO_URL.txt) |
 | Automated tests: API, including real-WebSocket collaboration | [ajaia-docs-api/test/](ajaia-docs-api/test/) |

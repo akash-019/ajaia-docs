@@ -3,7 +3,8 @@
 A lightweight collaborative document editor. Create, format, import, search and share documents, and edit them together in real time. Ownership and view/edit access are enforced by the server.
 
 - **Live app:** https://ajaia-docs-asjy.onrender.com
-- **Walkthrough video:** see [VIDEO_URL.txt](VIDEO_URL.txt)
+- **Walkthrough video:** https://drive.google.com/file/d/1wWkQDs35DOtcWSzBsJA7RZ2svRgDFbGH/view?usp=sharing
+- **Source code:** https://github.com/akash-019/ajaia-docs
 - **Architecture and tradeoffs:** [ARCHITECTURE.md](ARCHITECTURE.md)
 - **AI workflow note:** [AI_WORKFLOW.md](AI_WORKFLOW.md)
 - **What is included / status:** [SUBMISSION.md](SUBMISSION.md)
