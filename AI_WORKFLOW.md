@@ -29,6 +29,7 @@ I treated the AI as a fast pair programmer. I set the direction and the constrai
 | --- | --- | --- |
 | React + Vite UI in the first plan | Not the stack I wanted | Switched to Angular 21 before the UI was built |
 | `better-sqlite3` for storage | Its prebuilt binary needs glibc 2.33; it crashed on the dev machine and would be fragile to deploy | Moved to Node's built-in `node:sqlite`, with no native dependency |
+| `npm install` crashed in the new Angular app (an npm bug) | First fix was a workaround: `.npmrc` with `legacy-peer-deps` | Later found the cause: unused test packages left over from the Angular scaffold (`vitest`, `jsdom`). Removed them and the workaround; clean installs now work without it. |
 | Latest Angular (22) | Requires Node ≥ 22.22; local Node is 22.21 | Pinned Angular 21 rather than forcing a Node upgrade |
 | TypeScript 7 installed by default | Too new to trust for the server build | Pinned TypeScript ~5.9 |
 | Route guard calling `inject()` after `await` | Angular throws at runtime, because the injection context is gone after an await | Caught in review; injected before the await |

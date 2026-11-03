@@ -2,7 +2,7 @@
 
 FROM node:22-slim AS ui
 WORKDIR /app/ajaia-docs-ui
-COPY ajaia-docs-ui/package.json ajaia-docs-ui/package-lock.json ajaia-docs-ui/.npmrc ./
+COPY ajaia-docs-ui/package.json ajaia-docs-ui/package-lock.json ./
 RUN npm ci
 COPY ajaia-docs-ui/ ./
 RUN npx ng build

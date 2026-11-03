@@ -1,0 +1,10 @@
+# Dependencies and build output
+/node_modules
+/dist
+
+# Local data and settings (never commit)
+/data
+*.db
+*.db-shm
+*.db-wal
+.env

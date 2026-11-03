@@ -1,9 +1,13 @@
+# Only what the image build needs: the two apps' sources and lockfiles.
 **/node_modules
 **/dist
 **/.angular
+**/coverage
+**/.vscode
+**/*.log
+**/.env
 ajaia-docs-api/data
+e2e
 docs
 *.md
-!ajaia-docs-ui/**/*.md
 .git
-**/.env

@@ -1,8 +1,23 @@
+# Dependencies and build output (any folder)
 node_modules/
 dist/
 .angular/
+coverage/
+*.tsbuildinfo
+
+# Local data and settings (never commit)
 ajaia-docs-api/data/
 *.db
 *.db-shm
 *.db-wal
 .env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
