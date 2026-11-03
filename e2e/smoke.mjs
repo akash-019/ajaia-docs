@@ -121,7 +121,12 @@ await alice.waitForFunction(() => document.querySelectorAll('.people li').length
 await alice.type('.share-form input', 'carol@ajaia.dev');
 await alice.select('.share-form select', 'viewer');
 await alice.click('.share-form .btn-primary');
-await alice.waitForFunction(() => document.querySelectorAll('.people li').length === 3);
+try {
+  await alice.waitForFunction(() => document.querySelectorAll('.people li').length === 3);
+} catch (e) {
+  console.log('Share state at failure:', JSON.stringify(await alice.evaluate(() => ({ input: document.querySelector('.share-form input').value, role: document.querySelector('.share-form select').value, people: [...document.querySelectorAll('.people li')].map((li) => li.textContent.replace(/\s+/g, ' ').trim()), error: document.querySelector('.share-panel .alert-error')?.textContent, busy: document.querySelector('.share-form .btn-primary').disabled }))));
+  throw e;
+}
 await alice.type('.share-form input', 'nobody@ajaia.dev');
 await alice.click('.share-form .btn-primary');
 await alice.waitForSelector('.share-panel .alert-error');
@@ -140,6 +145,10 @@ const imported = await alice.$eval('.doc-body', (el) => el.innerHTML);
 check('markdown import -> editable doc', imported.includes('<h1>Meeting notes') && imported.includes('<ol>') && imported.includes('<strong>today</strong>'));
 await alice.waitForFunction(() => document.querySelector('.title-input').value !== '');
 check('import title from filename', (await alice.$eval('.title-input', (el) => el.value)) === 'meeting-notes');
+// Regression: merely opening a document (this one ends in a list) must not count as an edit.
+const importedId = alice.url().split('/docs/')[1];
+await new Promise((r) => setTimeout(r, 3000));
+check('opening a document does not edit it', (await alice.evaluate(async (id) => (await (await fetch(`/api/documents/${id}`)).json()).version, importedId)) === 1);
 const pdf = path.join(TMP, 'bad.pdf'); fs.writeFileSync(pdf, '%PDF-1.4');
 await alice.goto(`${BASE}/`); await alice.waitForSelector('input[type=file]');
 await (await alice.$('input[type=file]')).uploadFile(pdf);
@@ -245,6 +254,19 @@ await bob.screenshot({ path: `${SHOTS}/11-attachments.png` });
 await carol.click('.editor-top button::-p-text(Attachments)');
 await carol.waitForSelector('.attach-name');
 check('viewer sees attachments read-only', !(await carol.$('.attach-upload')) && !(await carol.$('.attach-list .btn')));
+
+// Regression: upgrading a viewer while they have the document open (it ends in a list) — their edits must reach others.
+const docId = docUrl.split('/docs/')[1];
+const setCarolRole = (role) => alice.evaluate((id, r) => fetch(`/api/documents/${id}/shares`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'carol@ajaia.dev', role: r }) }), docId, role);
+await setCarolRole('editor');
+await carol.waitForSelector('.toolbar', { timeout: 8000 });
+await carol.waitForFunction(() => document.querySelector('.save-status')?.textContent.includes('All changes saved'), { timeout: 8000 });
+await carol.click('.doc-body h1'); await carol.keyboard.press('End'); await carol.keyboard.type(' (carol)');
+await alice.waitForFunction(() => document.querySelector('.doc-body h1').textContent.includes('(carol)'), { timeout: 8000 });
+check('viewer upgraded live can edit, others receive it', true);
+await setCarolRole('viewer');
+await carol.waitForFunction(() => !document.querySelector('.toolbar') && document.querySelector('.doc-body')?.getAttribute('contenteditable') === 'false', { timeout: 8000 });
+check('editor downgraded live to read-only', true);
 
 // Rename shows up for others live.
 const t = await alice.$('.title-input'); await t.click(); await new Promise((r) => setTimeout(r, 50));

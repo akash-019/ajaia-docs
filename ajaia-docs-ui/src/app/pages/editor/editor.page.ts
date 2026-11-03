@@ -154,11 +154,19 @@ export class EditorPage implements AfterViewInit, OnDestroy {
     this.setTitle(doc.title);
     void this.loadAttachments();
 
+    this.startSession(doc.id);
+  }
+
+  /**
+   * Connects the live-editing session: a fresh Yjs document synced from the server,
+   * bound to a new editor. Restarted when the user's role changes (see onEvent).
+   */
+  private startSession(docId: string) {
     const me = this.auth.user()!;
     const ydoc = new Y.Doc();
     this.provider = new HocuspocusProvider({
       url: collabUrl(),
-      name: doc.id,
+      name: docId,
       document: ydoc,
       token: 'session-cookie', // the server authenticates with the session cookie
       onStatus: ({ status }) => this.connection.set(status),
@@ -181,7 +189,14 @@ export class EditorPage implements AfterViewInit, OnDestroy {
       element: this.host().nativeElement,
       extensions: [
         // Schema must match ajaia-docs-api/src/lib/editor-schema.ts.
-        StarterKit.configure({ heading: { levels: [1, 2, 3] }, undoRedo: false, link: { openOnClick: false } }),
+        // trailingNode is off: it appends a paragraph on load, which would turn merely
+        // opening a document into an edit (and, for viewers, a local change the server drops).
+        StarterKit.configure({
+          heading: { levels: [1, 2, 3] },
+          undoRedo: false,
+          trailingNode: false,
+          link: { openOnClick: false },
+        }),
         Collaboration.configure({ document: ydoc }),
         CollaborationCaret.configure({
           provider: this.provider,
@@ -192,6 +207,17 @@ export class EditorPage implements AfterViewInit, OnDestroy {
       editorProps: { attributes: { class: 'doc-body', spellcheck: 'true', 'aria-label': 'Document content' } },
       onTransaction: () => this.tick.update((n) => n + 1),
     });
+  }
+
+  private stopSession() {
+    this.provider?.destroy();
+    this.editor?.destroy();
+    this.provider = null;
+    this.editor = null;
+    this.host().nativeElement.replaceChildren();
+    this.synced.set(false);
+    this.unsynced.set(0);
+    this.peers.set([]);
   }
 
   ngOnDestroy() {
@@ -322,12 +348,24 @@ export class EditorPage implements AfterViewInit, OnDestroy {
       case 'attachments':
         void this.loadAttachments();
         break;
-      case 'access':
+      case 'access': {
+        const couldEdit = this.canEdit();
         this.role.set(event.role);
         void this.loadAttachments(); // delete permissions depend on the role
-        this.editor?.setEditable(this.canEdit());
+        // Switching between viewing and editing restarts the live session from the server's
+        // copy, so nothing this browser held locally can block or leak into later edits.
+        // Deferred: this runs inside the connection's own message callback.
+        if (couldEdit !== this.canEdit() && this.doc()) {
+          const docId = this.doc()!.id;
+          setTimeout(() => {
+            if (this.ended()) return;
+            this.stopSession();
+            this.startSession(docId);
+          });
+        }
         this.flash(event.role === 'editor' ? 'You can now edit this document.' : 'Your access changed to view only.');
         break;
+      }
       case 'revoked':
         this.end('The owner removed your access to this document.');
         break;

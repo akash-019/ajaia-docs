@@ -31,7 +31,7 @@ All accounts use the password **`demo1234`**. These are the only accounts: there
 | AI workflow note | [AI_WORKFLOW.md](AI_WORKFLOW.md) |
 | Walkthrough video URL | [VIDEO_URL.txt](VIDEO_URL.txt) |
 | Automated tests: API, including real-WebSocket collaboration | [ajaia-docs-api/test/](ajaia-docs-api/test/) |
-| Automated tests: browser smoke (33 checks) | [e2e/smoke.mjs](e2e/smoke.mjs) |
+| Automated tests: browser smoke (36 checks) | [e2e/smoke.mjs](e2e/smoke.mjs) |
 | Screenshots of the main flows | [docs/screenshots/](docs/screenshots/) |
 | Deployment config | [Dockerfile](Dockerfile), [render.yaml](render.yaml) |
 
