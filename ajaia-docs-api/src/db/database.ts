@@ -36,6 +36,20 @@ CREATE TABLE IF NOT EXISTS document_shares (
   PRIMARY KEY (document_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_shares_user ON document_shares(user_id);
+
+-- Files attached to a document. Stored in the database so they are exactly as durable
+-- as the documents themselves and are removed with them.
+CREATE TABLE IF NOT EXISTS attachments (
+  id           TEXT PRIMARY KEY,
+  document_id  TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  uploader_id  TEXT NOT NULL REFERENCES users(id),
+  filename     TEXT NOT NULL,
+  content_type TEXT NOT NULL,
+  size         INTEGER NOT NULL,
+  data         BLOB NOT NULL,
+  created_at   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_attachments_document ON attachments(document_id);
 `;
 
 /** Brings databases created by earlier builds up to the current schema. */

@@ -147,6 +147,10 @@ describe('real-time collaboration', () => {
     await alice.agent.patch(`/api/documents/${doc.id}`).send({ title: 'Live 2' }).expect(200);
     await until(() => b.events.includes('title'));
 
+    // Attachment changes are pushed to open editors so their lists refresh.
+    await alice.agent.post(`/api/documents/${doc.id}/attachments`).attach('file', Buffer.from('x'), 'a.txt').expect(201);
+    await until(() => b.events.includes('attachments') && c.events.includes('attachments'));
+
     // Revoking access takes effect on the open connection immediately.
     const bobId = (await bob.agent.get('/api/auth/me')).body.id;
     await alice.agent.delete(`/api/documents/${doc.id}/shares/${bobId}`).expect(204);

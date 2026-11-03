@@ -294,3 +294,71 @@ describe('insert from file', () => {
   });
 });
 
+describe('attachments', () => {
+  it('lets editors attach files that everyone with access can list and download safely', async () => {
+    const alice = await login('alice@ajaia.dev');
+    const bob = await login('bob@ajaia.dev');
+    const carol = await login('carol@ajaia.dev');
+    const { body: doc } = await alice.post('/api/documents').send({ title: 'Spec' }).expect(201);
+    await alice.post(`/api/documents/${doc.id}/shares`).send({ email: 'bob@ajaia.dev', role: 'editor' }).expect(201);
+    await alice.post(`/api/documents/${doc.id}/shares`).send({ email: 'carol@ajaia.dev', role: 'viewer' }).expect(201);
+    const url = `/api/documents/${doc.id}/attachments`;
+    const attach = (agent: typeof alice, name: string, bytes: Buffer | string) =>
+      agent.post(url).attach('file', Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes), name);
+
+    // Editor uploads; the stored type comes from the extension, not the client's claim.
+    const pdf = Buffer.from('%PDF-1.4 fake');
+    const { body: bobFile } = await attach(bob, '../../etc/Q4 Budget.pdf', pdf).expect(201);
+    expect(bobFile).toMatchObject({ filename: 'Q4 Budget.pdf', contentType: 'application/pdf', size: pdf.length, uploadedBy: { name: 'Bob Editor' }, canDelete: true });
+    const { body: aliceFile } = await attach(alice, 'notes.txt', 'hello').expect(201);
+
+    // Viewer sees the list (but may delete nothing) and can download.
+    const { body: carolList } = await carol.get(url).expect(200);
+    expect(carolList.map((a: { filename: string; canDelete: boolean }) => [a.filename, a.canDelete])).toEqual([
+      ['Q4 Budget.pdf', false],
+      ['notes.txt', false],
+    ]);
+    const download = await carol.get(`${url}/${bobFile.id}`).buffer(true).parse((res, cb) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (c: Buffer) => chunks.push(c));
+      res.on('end', () => cb(null, Buffer.concat(chunks)));
+    }).expect(200);
+    expect(Buffer.compare(download.body, pdf)).toBe(0);
+    expect(download.headers['content-type']).toBe('application/pdf');
+    expect(download.headers['content-disposition']).toBe('attachment; filename="Q4 Budget.pdf"');
+    expect(download.headers['x-content-type-options']).toBe('nosniff');
+    expect(download.headers['content-security-policy']).toContain('sandbox');
+
+    // Who may do what.
+    await attach(carol, 'x.txt', 'x').expect(403);
+    await carol.delete(`${url}/${bobFile.id}`).expect(403);
+    await bob.delete(`${url}/${aliceFile.id}`).expect(403); // editors delete only their own
+    await bob.delete(`${url}/${bobFile.id}`).expect(204);
+    const outsider = await login('bob@ajaia.dev');
+    const { body: privateDoc } = await alice.post('/api/documents').send({}).expect(201);
+    await outsider.get(`/api/documents/${privateDoc.id}/attachments`).expect(404);
+    await carol.get(`${url}/does-not-exist`).expect(404);
+
+    // Policy: no script-capable or unknown types, no empty files, size and count limits.
+    expect((await attach(alice, 'page.html', '<script>1</script>').expect(400)).body.error).toMatch(/Supported: .pdf/);
+    await attach(alice, 'logo.svg', '<svg/>').expect(400);
+    await attach(alice, 'empty.csv', '').expect(400);
+    expect((await attach(alice, 'big.zip', Buffer.alloc(5 * 1024 * 1024 + 1)).expect(400)).body.error).toBe('File is too large (max 5 MB)');
+    for (let i = 0; i < 9; i++) await attach(alice, `f${i}.txt`, 'x').expect(201);
+    expect((await attach(alice, 'eleventh.txt', 'x').expect(400)).body.error).toMatch(/at most 10/);
+
+    // Deleting the document removes its attachments.
+    await alice.delete(`/api/documents/${doc.id}`).expect(204);
+    await alice.get(`${url}/${aliceFile.id}`).expect(404);
+  });
+
+  it('keeps the 2 MB limit for document imports', async () => {
+    const alice = await login('alice@ajaia.dev');
+    const { body } = await alice
+      .post('/api/documents/import')
+      .attach('file', Buffer.alloc(2 * 1024 * 1024 + 1, 'a'), 'big.txt')
+      .expect(400);
+    expect(body.error).toBe('File is too large (max 2 MB)');
+  });
+});
+

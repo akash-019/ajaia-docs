@@ -47,22 +47,24 @@ I treated the AI as a fast pair programmer. I set the direction and the constrai
 | Server-side PDF with headless Chrome (considered for export) | Heavy image, high memory and slow cold starts on free hosting | Browser print with a dedicated print stylesheet; Markdown is generated on the server |
 | Default Markdown conversion | Dropped underline and produced loose, widely spaced lists | Custom rules: underline kept as `<u>` (re-imports cleanly), tight list items. A round-trip test protects this. |
 | API routes mixed SQL, access checks and response shaping in one file | Harder to read and change as features grew | I asked for an MVC structure: models, views, controllers, services, routes. It was done as a refactor only, with no behavior change, and the existing 15 API tests and 27 browser checks passed unchanged before and after. |
+| My first answer on attachments: "skip, they'd vanish on the free tier's temporary disk" | When challenged, that reasoning didn't hold: documents vanish there too | Stored attachment bytes in SQLite next to the documents. They're exactly as durable as everything else, deleted with their document, and need no paid storage. Strict type allowlist and forced-download headers keep files from running in the app. |
 | Search box showed two clear buttons | Chrome's built-in clear button plus ours | Hid the native one |
 | Server: idle WebSocket timeouts | Hocuspocus closes connections it hasn't heard from | Server pings each socket and marks it alive on pong |
 
 ## How I verified correctness, UX and reliability
 
-- **Correctness:** 16 API tests.
+- **Correctness:** 18 API tests.
   - Sign-in: wrong password, lockout, and forged, expired, wrong-algorithm and `alg:none` tokens.
   - Session timeout: sliding renewal, the 7-day cap, and sockets closed on expiry or sign-out.
   - Access control across owner, editor, viewer and stranger, including removal.
   - Search scoping, validation and XSS sanitization.
   - Markdown export, including an export → re-import round trip.
   - Inserting a file into an existing document: editors only, content sanitized.
+  - Attachments: type, size and count limits, permissions per role, safe download headers, removal with the document.
   - **Collaboration over real WebSockets:** live sync, viewer edits dropped by the server, live removal and upgrade, outsiders refused, persistence and searchability.
 
   TypeScript strict mode on both apps.
-- **End-to-end:** a 29-check headless-Chrome run with three users signed in at once.
+- **End-to-end:** a 33-check headless-Chrome run with three users signed in at once.
   - Sign-in, create, format, reload persistence, rename, import, search, sharing and the read-only viewer.
   - Typing that appears live for others without a reload, named cursors, simultaneous typing that converges, live rename, live revocation, export (downloaded file, print view, rendered PDF), and session expiry.
 

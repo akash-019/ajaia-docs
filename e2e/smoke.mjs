@@ -150,7 +150,13 @@ await alice.screenshot({ path: `${SHOTS}/04-documents-owner.png` });
 
 // Search matches document text, not just titles, and highlights the match.
 await alice.type('.search input', 'scope creep');
-await alice.waitForFunction(() => document.querySelectorAll('.doc-row').length === 1 && document.querySelector('.snippet mark'), { timeout: 5000 });
+// Generous timeout: with three browsers running, the machine can be slow. On failure, show what was on screen.
+try {
+  await alice.waitForFunction(() => document.querySelectorAll('.doc-row').length === 1 && document.querySelector('.snippet mark'), { timeout: 10000 });
+} catch (e) {
+  console.log('Search state at failure:', JSON.stringify(await alice.evaluate(() => ({ input: document.querySelector('.search input').value, rows: [...document.querySelectorAll('.doc-row')].map((r) => r.textContent.replace(/\s+/g, ' ').trim()), empty: document.querySelector('.empty')?.textContent }))));
+  throw e;
+}
 check('search finds text inside documents', (await alice.$eval('.doc-row .doc-title', (e) => e.textContent)).includes('meeting-notes'));
 await alice.screenshot({ path: `${SHOTS}/05-search.png` });
 await alice.$eval('.search input', (el) => (el.value = ''));
@@ -160,7 +166,9 @@ check('search shows empty state', true);
 
 // 5. Bob sees it under "Shared with me" and edits
 const bob = await session('bob@ajaia.dev');
-check('bob sees doc under Shared with me', (await bob.content()).includes('Q4 Launch Plan') && (await bob.content()).includes('Can edit'));
+// The list loads after the page header, so wait for it rather than reading the page immediately.
+await bob.waitForFunction(() => [...document.querySelectorAll('.doc-row')].some((r) => r.textContent.includes('Q4 Launch Plan') && r.textContent.includes('Can edit')), { timeout: 8000 });
+check('bob sees doc under Shared with me', true);
 await bob.screenshot({ path: `${SHOTS}/06-documents-shared.png` });
 await bob.goto(docUrl);
 await bob.waitForSelector('.toolbar');
@@ -215,6 +223,28 @@ await bob.waitForFunction(() => [...document.querySelectorAll('.doc-body h2')].s
 check('insert file into open document, others see it live', (await bodyText(bob)).includes('inserted from a file'));
 await alice.waitForSelector('.alert-info', { timeout: 5000 });
 await bob.screenshot({ path: `${SHOTS}/10-insert-file-live.png` });
+
+// Attachments: Alice attaches a file; Bob's list updates live and he can download it; Carol can only download.
+const png = path.join(TMP, 'diagram.png');
+fs.writeFileSync(png, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'));
+await alice.click('.editor-top button::-p-text(Attachments)');
+await alice.waitForSelector('.attach-upload input[type=file]');
+check('attachment limits shown in panel', (await alice.$eval('app-attachments-panel', (e) => e.textContent)).includes('up to 5 MB each'));
+await (await alice.$('.attach-upload input[type=file]')).uploadFile(png);
+await bob.waitForFunction(() => [...document.querySelectorAll('.editor-top .btn')].some((b) => b.textContent.includes('Attachments (1)')), { timeout: 8000 });
+check('attachment count updates live for others', true);
+await bob.click('.editor-top button::-p-text(Attachments)');
+await bob.waitForSelector('.attach-name');
+const dl = await bob.evaluate(async () => {
+  const href = document.querySelector('.attach-name').getAttribute('href');
+  const r = await fetch(href);
+  return { status: r.status, type: r.headers.get('content-type'), size: (await r.arrayBuffer()).byteLength };
+});
+check('editor can download attachment', dl.status === 200 && dl.type === 'image/png' && dl.size > 50);
+await bob.screenshot({ path: `${SHOTS}/11-attachments.png` });
+await carol.click('.editor-top button::-p-text(Attachments)');
+await carol.waitForSelector('.attach-name');
+check('viewer sees attachments read-only', !(await carol.$('.attach-upload')) && !(await carol.$('.attach-list .btn')));
 
 // Rename shows up for others live.
 const t = await alice.$('.title-input'); await t.click(); await new Promise((r) => setTimeout(r, 50));

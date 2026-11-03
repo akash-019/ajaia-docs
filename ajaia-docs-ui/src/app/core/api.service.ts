@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { DocumentDetail, DocumentList, SessionUser, Share, ShareRole, User } from './models';
+import { Attachment, DocumentDetail, DocumentList, SessionUser, Share, ShareRole, User } from './models';
 
 /** Pulls the server's `{ error }` message out of an HTTP failure for display. */
 export function errorMessage(err: unknown): string {
@@ -62,6 +62,22 @@ export class ApiService {
   }
   deleteDocument(id: string) {
     return firstValueFrom(this.http.delete<void>(`/api/documents/${id}`));
+  }
+
+  listAttachments(id: string) {
+    return firstValueFrom(this.http.get<Attachment[]>(`/api/documents/${id}/attachments`));
+  }
+  uploadAttachment(id: string, file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return firstValueFrom(this.http.post<Attachment>(`/api/documents/${id}/attachments`, form));
+  }
+  deleteAttachment(id: string, attachmentId: string) {
+    return firstValueFrom(this.http.delete<void>(`/api/documents/${id}/attachments/${attachmentId}`));
+  }
+  /** Direct download link (same origin, so the session cookie is sent). */
+  attachmentUrl(id: string, attachmentId: string) {
+    return `/api/documents/${id}/attachments/${attachmentId}`;
   }
 
   listShares(id: string) {

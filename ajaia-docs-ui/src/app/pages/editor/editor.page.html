@@ -70,7 +70,16 @@
         }
       </div>
 
-      <button class="btn btn-primary" (click)="shareOpen.set(!shareOpen())">
+      <button
+        class="btn"
+        [class.btn-active]="attachmentsOpen()"
+        [attr.aria-expanded]="attachmentsOpen()"
+        (click)="togglePanel('attachments')"
+      >
+        Attachments ({{ attachments().length }})
+      </button>
+
+      <button class="btn btn-primary" (click)="togglePanel('share')">
         {{ role() === 'owner' ? 'Share' : 'People' }}
       </button>
     }
@@ -127,6 +136,15 @@
     </div>
     @if (shareOpen() && doc(); as doc) {
       <app-share-panel [doc]="doc" (closed)="shareOpen.set(false)" />
+    }
+    @if (attachmentsOpen() && doc(); as doc) {
+      <app-attachments-panel
+        [docId]="doc.id"
+        [attachments]="attachments()"
+        [canEdit]="canEdit()"
+        (changed)="loadAttachments()"
+        (closed)="attachmentsOpen.set(false)"
+      />
     }
   </div>
 </div>

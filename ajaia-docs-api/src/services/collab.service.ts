@@ -26,7 +26,8 @@ export type CollabEvent =
   | { type: 'access'; role: Role }
   | { type: 'revoked' }
   | { type: 'deleted' }
-  | { type: 'session-ended' };
+  | { type: 'session-ended' }
+  | { type: 'attachments' };
 
 export interface CollabOptions {
   /** Delay before persisting after the last change (ms). */
@@ -171,6 +172,11 @@ export function createCollabService({ documents, access, sessions }: CollabDeps,
     /** Tell everyone with the document open about a rename. */
     titleChanged(docId: string, title: string) {
       for (const conn of connectionsOf(docId)) send(conn, { type: 'title', title });
+    },
+
+    /** Tell everyone with the document open that its attachments changed. */
+    attachmentsChanged(docId: string) {
+      for (const conn of connectionsOf(docId)) send(conn, { type: 'attachments' });
     },
 
     /** Apply a share change to a user's open connections immediately. */

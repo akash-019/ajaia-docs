@@ -18,9 +18,9 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(400).json({ error: 'Invalid request', details: err.issues.map((i) => i.message) });
     return;
   }
+  // Other upload errors (size limits are reported by the upload middleware itself).
   if (err instanceof multer.MulterError) {
-    const message = err.code === 'LIMIT_FILE_SIZE' ? 'File is too large (max 2 MB)' : err.message;
-    res.status(400).json({ error: message });
+    res.status(400).json({ error: err.message });
     return;
   }
   // Client errors raised by Express middleware (malformed JSON, body too large, ...).

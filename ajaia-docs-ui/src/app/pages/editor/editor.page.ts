@@ -21,7 +21,8 @@ import StarterKit from '@tiptap/starter-kit';
 import * as Y from 'yjs';
 import { ApiService, errorMessage } from '../../core/api.service';
 import { AuthService } from '../../core/auth';
-import { DocumentDetail, MAX_UPLOAD_MB, Role, SUPPORTED_IMPORT_TYPES } from '../../core/models';
+import { Attachment, DocumentDetail, MAX_UPLOAD_MB, Role, SUPPORTED_IMPORT_TYPES } from '../../core/models';
+import { AttachmentsPanel } from './attachments-panel';
 import { SharePanel } from './share-panel';
 
 /** Pushed by the server over the collaboration socket (see ajaia-docs-api/src/services/collab.service.ts). */
@@ -30,7 +31,8 @@ type CollabEvent =
   | { type: 'access'; role: Role }
   | { type: 'revoked' }
   | { type: 'deleted' }
-  | { type: 'session-ended' };
+  | { type: 'session-ended' }
+  | { type: 'attachments' };
 
 interface Peer {
   id: string;
@@ -81,7 +83,7 @@ const TOOLS = [
  */
 @Component({
   selector: 'app-editor-page',
-  imports: [RouterLink, SharePanel],
+  imports: [RouterLink, SharePanel, AttachmentsPanel],
   templateUrl: './editor.page.html',
 })
 export class EditorPage implements AfterViewInit, OnDestroy {
@@ -110,6 +112,8 @@ export class EditorPage implements AfterViewInit, OnDestroy {
   protected titleDraft = signal('');
   protected titleError = signal('');
   protected shareOpen = signal(false);
+  protected attachmentsOpen = signal(false);
+  protected attachments = signal<Attachment[]>([]);
   protected exportOpen = signal(false);
   /** Bumped on every editor transaction so toolbar active states re-render. */
   private tick = signal(0);
@@ -148,6 +152,7 @@ export class EditorPage implements AfterViewInit, OnDestroy {
     this.doc.set(doc);
     this.role.set(doc.role);
     this.setTitle(doc.title);
+    void this.loadAttachments();
 
     const me = this.auth.user()!;
     const ydoc = new Y.Doc();
@@ -253,6 +258,24 @@ export class EditorPage implements AfterViewInit, OnDestroy {
     }
   }
 
+  /** One side panel at a time. */
+  protected togglePanel(panel: 'share' | 'attachments') {
+    const share = panel === 'share' && !this.shareOpen();
+    const attachments = panel === 'attachments' && !this.attachmentsOpen();
+    this.shareOpen.set(share);
+    this.attachmentsOpen.set(attachments);
+  }
+
+  protected async loadAttachments() {
+    const doc = this.doc();
+    if (!doc) return;
+    try {
+      this.attachments.set(await this.api.listAttachments(doc.id));
+    } catch {
+      // Access problems surface elsewhere (session expiry, revocation events).
+    }
+  }
+
   /** PDF via the browser's print dialog ("Save as PDF"); the print stylesheet shows only the page. */
   protected printPdf() {
     this.exportOpen.set(false);
@@ -296,8 +319,12 @@ export class EditorPage implements AfterViewInit, OnDestroy {
         this.doc.update((d) => d && { ...d, title: event.title });
         this.setTitle(event.title);
         break;
+      case 'attachments':
+        void this.loadAttachments();
+        break;
       case 'access':
         this.role.set(event.role);
+        void this.loadAttachments(); // delete permissions depend on the role
         this.editor?.setEditable(this.canEdit());
         this.flash(event.role === 'editor' ? 'You can now edit this document.' : 'Your access changed to view only.');
         break;
@@ -317,6 +344,7 @@ export class EditorPage implements AfterViewInit, OnDestroy {
   private end(message: string) {
     this.ended.set(message);
     this.shareOpen.set(false);
+    this.attachmentsOpen.set(false);
     this.provider?.destroy();
     this.editor?.setEditable(false);
   }

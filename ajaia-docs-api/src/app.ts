@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import { createAttachmentsController } from './controllers/attachments.controller.js';
 import { createAuthController } from './controllers/auth.controller.js';
 import { createDocumentsController } from './controllers/documents.controller.js';
 import { createSharesController } from './controllers/shares.controller.js';
@@ -9,6 +10,7 @@ import { createUsersController } from './controllers/users.controller.js';
 import type { Db } from './db/database.js';
 import { loadUser } from './middleware/auth.middleware.js';
 import { apiNotFound, errorHandler } from './middleware/error.middleware.js';
+import { createAttachmentModel } from './models/attachment.model.js';
 import { createDocumentModel } from './models/document.model.js';
 import { createShareModel } from './models/share.model.js';
 import { createUserModel } from './models/user.model.js';
@@ -37,6 +39,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, staticDir,
   const users = createUserModel(db);
   const documents = createDocumentModel(db);
   const shares = createShareModel(db);
+  const attachments = createAttachmentModel(db);
 
   // Services (business logic)
   const sessions = createSessionService(sessionSecret, secureCookies);
@@ -49,6 +52,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, staticDir,
   const usersController = createUsersController({ users });
   const documentsController = createDocumentsController({ documents, access, collab });
   const sharesController = createSharesController({ shares, users, access, collab });
+  const attachmentsController = createAttachmentsController({ attachments, access, collab });
 
   const app = express();
   app.set('trust proxy', 1);
@@ -60,7 +64,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, staticDir,
     res.json({ ok: true });
   });
   app.use('/api', authRoutes(authController, usersController));
-  app.use('/api/documents', documentRoutes(documentsController, sharesController));
+  app.use('/api/documents', documentRoutes(documentsController, sharesController, attachmentsController));
   app.use('/api', apiNotFound);
 
   if (staticDir && fs.existsSync(staticDir)) {
