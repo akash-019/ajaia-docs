@@ -68,4 +68,10 @@ I treated the AI as a fast pair programmer. I set the direction and the constrai
 - **UX:** I reviewed every screenshot ([docs/screenshots](docs/screenshots)), which is how the rename, "Saved" wording and double clear-button issues were found.
 - **Shipping:** a clean `npm ci`, production build, pruned install and production run from a fresh copy, which are the same steps the Dockerfile runs. Prod-mode login, the seeded share and the viewer write block were confirmed over HTTP.
 
-_What was not verified:_ the Docker image itself was not built locally, because the Docker daemon is not accessible to my user on this machine. Its steps were run individually instead (above). The live deployment is the final check.
+- **Production:** the Docker image couldn't be built locally (no access to the Docker daemon on this machine), so its steps were run individually first. The deployed app (https://ajaia-docs-asjy.onrender.com) was then checked over HTTPS:
+  - sign-in, with the session cookie set `HttpOnly; Secure; SameSite=Lax`
+  - search, export, and 401 for signed-out requests
+  - two real clients editing live through Render's WebSocket proxy (about 300 ms to sync, viewer writes blocked)
+  - a headless-browser pass with no JavaScript errors
+
+  The live-editing check used a temporary document, deleted afterwards, so the demo data stayed clean.
