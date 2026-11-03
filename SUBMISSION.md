@@ -5,7 +5,7 @@
 - **Live app:** https://ajaia-docs-asjy.onrender.com
 - **Walkthrough video:** https://drive.google.com/file/d/1wWkQDs35DOtcWSzBsJA7RZ2svRgDFbGH/view?usp=sharing (also in [VIDEO_URL.txt](VIDEO_URL.txt))
 - **Source code:** https://github.com/akash-019/ajaia-docs
-- **Time spent:** _TODO: hours_
+- **Time spent:** about 3¼ hours (Nov 3, 13:24–16:35 IST, elapsed time covering build, deployment, testing, documentation and the walkthrough video), within the 4–6 hour limit
 
 > **Before you test the live app:** it runs on Render's free plan. That plan sleeps after about 15 minutes without traffic, so the first request after a pause can take about a minute, and **data resets whenever it restarts**. If a document you created is gone after a break, that's why. The demo accounts and the shared "Welcome to Ajaia Docs" document are always re-created. Everything persists normally when run locally (see [README.md](README.md)).
 
