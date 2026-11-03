@@ -112,13 +112,17 @@ The [Dockerfile](Dockerfile) builds one image that serves the UI, the REST API a
 ## Project layout
 
 ```
-ajaia-docs-api/   Express 5 + TypeScript API, SQLite, Hocuspocus (Yjs) collaboration server
-  src/routes/documents.ts   documents, search, import, sharing
-  src/collab.ts             live co-editing socket: auth, persistence, live access changes
-  src/access.ts             the one access rule used by REST and the socket
-  src/auth.ts               password sign-in, JWT session cookie, lockout
-  src/importers.ts          .txt / .md / .docx -> HTML
-  src/sanitize.ts           HTML allowlist applied to everything stored
+ajaia-docs-api/   Express 5 + TypeScript API (MVC), SQLite, Hocuspocus (Yjs) collaboration server
+  src/app.ts                composition root: models → services → controllers → routes
+  src/routes/               URL → middleware → controller (auth, documents + shares)
+  src/controllers/          C: read/validate the request, call models/services, send a view
+  src/models/               M: all SQL (users, documents, shares)
+  src/views/                V: response shapes (document, user, share)
+  src/services/             access rules, JWT sessions, login limiter, live editing, import/export
+  src/middleware/           auth (session + renewal), upload, errors
+  src/validators/           zod request schemas
+  src/db/                   schema + migrations, demo seed
+  src/lib/                  sanitize, passwords, editor schema, HTTP error
   test/                     REST + real-WebSocket collaboration tests
 ajaia-docs-ui/    Angular 21 (standalone components, signals, zoneless) + TipTap editor
   src/app/pages/            sign-in, documents list + search, editor, share panel

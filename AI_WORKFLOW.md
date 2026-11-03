@@ -46,6 +46,7 @@ I treated the AI as a fast pair programmer. I set the direction and the constrai
 | Session lasted a fixed 7 days, and the UI didn't react to expiry (my question: "is there any session time?") | Too long for an idle session, and expired users just saw errors | 8 hours idle (sliding) and 7 days absolute. A 401 sends the user to sign-in and back. Live sockets also enforce expiry, which was easy to miss because a WebSocket outlives the request that authenticated it. |
 | Server-side PDF with headless Chrome (considered for export) | Heavy image, high memory and slow cold starts on free hosting | Browser print with a dedicated print stylesheet; Markdown is generated on the server |
 | Default Markdown conversion | Dropped underline and produced loose, widely spaced lists | Custom rules: underline kept as `<u>` (re-imports cleanly), tight list items. A round-trip test protects this. |
+| API routes mixed SQL, access checks and response shaping in one file | Harder to read and change as features grew | I asked for an MVC structure: models, views, controllers, services, routes. It was done as a refactor only, with no behavior change, and the existing 15 API tests and 27 browser checks passed unchanged before and after. |
 | Search box showed two clear buttons | Chrome's built-in clear button plus ours | Hid the native one |
 | Server: idle WebSocket timeouts | Hocuspocus closes connections it hasn't heard from | Server pings each socket and marks it alive on pong |
 

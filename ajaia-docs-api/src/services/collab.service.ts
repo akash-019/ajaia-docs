@@ -4,11 +4,11 @@ import { generateHTML, generateJSON } from '@tiptap/html';
 import { prosemirrorJSONToYDoc, yDocToProsemirrorJSON } from '@tiptap/y-tiptap';
 import { WebSocketServer } from 'ws';
 import * as Y from 'yjs';
-import { canEdit, getRole, type Role } from './access.js';
-import { sessionFromCookieHeader, type Session } from './auth.js';
-import type { Db } from './db.js';
-import { editorExtensions, editorSchema, YJS_FIELD } from './editor-schema.js';
-import { sanitizeContent, toPlainText } from './sanitize.js';
+import { editorExtensions, editorSchema, YJS_FIELD } from '../lib/editor-schema.js';
+import { sanitizeContent } from '../lib/sanitize.js';
+import type { DocumentModel } from '../models/document.model.js';
+import { canEdit, type AccessService, type Role } from './access.service.js';
+import type { Session, SessionService } from './session.service.js';
 
 export const COLLAB_PATH = '/api/collab';
 const PING_INTERVAL_MS = 15_000;
@@ -45,12 +45,15 @@ export interface CollabOptions {
  * Persistence: the Yjs state is stored as a blob (for lossless sync), and a
  * sanitized HTML rendering is stored alongside it for the REST API and listings.
  */
-export function createCollab(db: Db, sessionSecret: string, options: CollabOptions = {}) {
-  const loadRow = db.prepare('SELECT content, ydoc FROM documents WHERE id = ?');
-  const saveState = db.prepare('UPDATE documents SET ydoc = ? WHERE id = ?');
-  const storeRow = db.prepare(
-    `UPDATE documents SET ydoc = ?, content = ?, search_text = ?, version = version + 1, updated_at = ? WHERE id = ?`,
-  );
+export interface CollabDeps {
+  documents: DocumentModel;
+  access: AccessService;
+  sessions: SessionService;
+}
+
+export function createCollabService({ documents, access, sessions }: CollabDeps, options: CollabOptions = {}) {
+  const renderHtml = (doc: Y.Doc) =>
+    sanitizeContent(generateHTML(yDocToProsemirrorJSON(doc, YJS_FIELD), editorExtensions));
 
   const hocuspocus = new Hocuspocus<CollabContext>({
     quiet: true,
@@ -58,15 +61,15 @@ export function createCollab(db: Db, sessionSecret: string, options: CollabOptio
     maxDebounce: options.maxDebounce ?? 5000,
 
     async onAuthenticate({ documentName, requestHeaders, connectionConfig }) {
-      const session = sessionFromCookieHeader(requestHeaders.get('cookie'), sessionSecret);
-      const role = session ? getRole(db, documentName, session.userId) : null;
+      const session = sessions.fromCookieHeader(requestHeaders.get('cookie'));
+      const role = session ? access.roleOf(documentName, session.userId) : null;
       if (!session || !role) throw new Error('Not allowed');
       connectionConfig.readOnly = !canEdit(role);
       return { userId: session.userId, sid: session.sid, expiresAt: session.expiresAt } satisfies CollabContext;
     },
 
     async onLoadDocument({ documentName, document }) {
-      const row = loadRow.get(documentName) as { content: string; ydoc: Uint8Array | null } | undefined;
+      const row = documents.loadState(documentName);
       if (!row) return document;
       if (row.ydoc) {
         Y.applyUpdate(document, row.ydoc);
@@ -76,7 +79,7 @@ export function createCollab(db: Db, sessionSecret: string, options: CollabOptio
         // starts from the same CRDT history.
         const seeded = prosemirrorJSONToYDoc(editorSchema, generateJSON(row.content, editorExtensions), YJS_FIELD);
         Y.applyUpdate(document, Y.encodeStateAsUpdate(seeded));
-        saveState.run(Y.encodeStateAsUpdate(document), documentName);
+        documents.saveState(documentName, Y.encodeStateAsUpdate(document));
       }
       return document;
     },
@@ -85,14 +88,14 @@ export function createCollab(db: Db, sessionSecret: string, options: CollabOptio
       const state = Y.encodeStateAsUpdate(document);
       let html: string;
       try {
-        html = sanitizeContent(generateHTML(yDocToProsemirrorJSON(document, YJS_FIELD), editorExtensions));
+        html = renderHtml(document);
       } catch (err) {
         // Content that does not fit the schema is never rendered; keep the last good HTML.
         console.error(`Could not render document ${documentName}`, err);
-        saveState.run(state, documentName);
+        documents.saveState(documentName, state);
         return;
       }
-      storeRow.run(state, html, toPlainText(html), new Date().toISOString(), documentName);
+      documents.saveContent(documentName, state, html);
     },
   });
 
@@ -159,7 +162,7 @@ export function createCollab(db: Db, sessionSecret: string, options: CollabOptio
       const doc = hocuspocus.documents.get(docId);
       if (!doc) return null;
       try {
-        return sanitizeContent(generateHTML(yDocToProsemirrorJSON(doc, YJS_FIELD), editorExtensions));
+        return renderHtml(doc);
       } catch {
         return null;
       }
@@ -204,4 +207,4 @@ export function createCollab(db: Db, sessionSecret: string, options: CollabOptio
   };
 }
 
-export type Collab = ReturnType<typeof createCollab>;
+export type CollabService = ReturnType<typeof createCollabService>;

@@ -8,7 +8,7 @@ Browser (Angular 21 + TipTap + Yjs)
    │  both authenticated by the same JWT in an httpOnly cookie
    ▼
 Express 5 API ─────────────── Hocuspocus collaboration server   (one Node process, one port)
-   │  access check: access.ts  ◄── same rule ──►  checked on socket connect + live updates
+   │  access check: access.service  ◄── same rule ──►  checked on socket connect + live updates
    ▼
 SQLite (node:sqlite): users · documents (Yjs state + sanitized HTML + search text) · document_shares
 ```
@@ -24,7 +24,7 @@ The UI, REST API and WebSocket ship as one service, one image and one URL. For t
    - edits made while offline sync on reconnect
 
    (The first version used optimistic locking with a 409 conflict prompt. It was correct but not live, so I replaced it.)
-2. **Sharing that is real access control, not just UI.** One function, `access.ts`, decides the role, and both the REST routes and the socket use it.
+2. **Sharing that is real access control, not just UI.** One service, `access.service.ts`, decides the role, and both the REST routes and the socket use it.
    - The owner can do everything.
    - An editor can write.
    - A viewer gets a **read-only socket**: the server drops their updates even from a modified client.
@@ -45,9 +45,10 @@ The UI, REST API and WebSocket ship as one service, one image and one URL. For t
 
 | Decision | Why | Tradeoff |
 | --- | --- | --- |
+| **MVC layering in the API**: models (all SQL), views (response shapes), controllers (HTTP), plus services, routes, middleware and validators, wired in one composition root (`app.ts`) | Each file has one job: SQL changes stay in models, response changes in views, and access rules in one service shared by REST and the live socket. Factory functions with injected dependencies keep it testable without a DI framework. | More files than a small app strictly needs. |
 | **Yjs CRDT + Hocuspocus** for content | Live updates and conflict-free merging; a proven stack that TipTap supports directly. Hocuspocus provides auth hooks, read-only connections and debounced persistence. | More moving parts than REST saves. Content no longer goes through `PATCH`; REST is for metadata only. |
-| Store **Yjs state + sanitized HTML + plain text** | The Yjs state gives lossless sync. HTML serves REST, imports and seeding. The plain text is for search. | Three representations, all written in one place (`collab.ts` on store, `createDocument` on import). |
-| Server-side **HTML → Yjs seeding** on first open | Imported and seeded docs start from one shared CRDT history, avoiding duplicate content when two clients seed at once. | The server needs the editor schema (`editor-schema.ts`), which must stay in step with the UI. |
+| Store **Yjs state + sanitized HTML + plain text** | The Yjs state gives lossless sync. HTML serves REST, imports and seeding. The plain text is for search. | Three representations, all written through the document model, which derives the search text on every write. |
+| Server-side **HTML → Yjs seeding** on first open | Imported and seeded docs start from one shared CRDT history, avoiding duplicate content when two clients seed at once. | The server needs the editor schema (`lib/editor-schema.ts`), which must stay in step with the UI. |
 | **JWT in an httpOnly cookie**, sliding 8 h idle / 7 d absolute | A standard signed token with built-in expiry. A cookie works for WebSockets without token plumbing and stays out of reach of XSS. Sliding expiry keeps active users signed in. | Stateless, so a stolen token works until it expires (at most 8 idle hours). Server-side revocation would need a session table. |
 | **SQLite via `node:sqlite`** | Zero setup, no paid service, no native addon. better-sqlite3 failed on an older glibc. | Single node, and needs a disk to persist. Moving to Postgres is contained to the data access code. |
 | Seeded accounts, **no sign-up** | Keeps scope on the editor; the brief allows seeded users. | Adding accounts means editing the seed. Sign-up is a small next step now that hashing exists. |

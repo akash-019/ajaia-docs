@@ -1,8 +1,8 @@
-import './env.js'; // must be first: loads .env before other modules read process.env
+import './config/env.js'; // must be first: loads .env before other modules read process.env
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { createApp } from './app.js';
-import { openDb } from './db.js';
+import { openDb } from './db/database.js';
 
 const port = Number(process.env.PORT ?? 3000);
 const isProd = process.env.NODE_ENV === 'production';

@@ -1,19 +1,14 @@
-import type { ErrorRequestHandler } from 'express';
+import type { ErrorRequestHandler, RequestHandler } from 'express';
 import multer from 'multer';
 import { ZodError } from 'zod';
+import { HttpError } from '../lib/http-error.js';
 
-export class HttpError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-    public details?: unknown,
-  ) {
-    super(message);
-  }
-}
+/** Unknown /api/* paths. */
+export const apiNotFound: RequestHandler = () => {
+  throw new HttpError(404, 'Not found');
+};
 
-export const notFound = () => new HttpError(404, 'Document not found');
-
+/** Every error becomes `{ error, details? }` JSON with a fitting status; internals are only logged. */
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof HttpError) {
     res.status(err.status).json({ error: err.message, details: err.details });

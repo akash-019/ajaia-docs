@@ -7,7 +7,8 @@ import jwt from 'jsonwebtoken';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { createApp } from '../src/app.js';
-import { DEMO_PASSWORD, openDb } from '../src/db.js';
+import { openDb } from '../src/db/database.js';
+import { DEMO_PASSWORD } from '../src/db/seed.js';
 
 /**
  * Real-time editing over real WebSockets: two users editing the same document,

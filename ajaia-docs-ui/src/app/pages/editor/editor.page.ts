@@ -24,7 +24,7 @@ import { AuthService } from '../../core/auth';
 import { DocumentDetail, Role } from '../../core/models';
 import { SharePanel } from './share-panel';
 
-/** Pushed by the server over the collaboration socket (see ajaia-docs-api/src/collab.ts). */
+/** Pushed by the server over the collaboration socket (see ajaia-docs-api/src/services/collab.service.ts). */
 type CollabEvent =
   | { type: 'title'; title: string }
   | { type: 'access'; role: Role }
@@ -172,7 +172,7 @@ export class EditorPage implements AfterViewInit, OnDestroy {
     this.editor = new Editor({
       element: this.host().nativeElement,
       extensions: [
-        // Schema must match ajaia-docs-api/src/editor-schema.ts.
+        // Schema must match ajaia-docs-api/src/lib/editor-schema.ts.
         StarterKit.configure({ heading: { levels: [1, 2, 3] }, undoRedo: false, link: { openOnClick: false } }),
         Collaboration.configure({ document: ydoc }),
         CollaborationCaret.configure({

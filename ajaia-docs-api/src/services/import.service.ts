@@ -1,8 +1,8 @@
 import path from 'node:path';
 import mammoth from 'mammoth';
 import { marked } from 'marked';
-import { HttpError } from './errors.js';
-import { sanitizeContent } from './sanitize.js';
+import { HttpError } from '../lib/http-error.js';
+import { sanitizeContent } from '../lib/sanitize.js';
 
 export const SUPPORTED_EXTENSIONS = ['.txt', '.md', '.docx'] as const;
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;

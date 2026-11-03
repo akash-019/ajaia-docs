@@ -2,9 +2,10 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
-import { SESSION_IDLE_SECONDS, SESSION_MAX_SECONDS } from '../src/auth.js';
-import { DEMO_PASSWORD, openDb } from '../src/db.js';
-import { sanitizeContent } from '../src/sanitize.js';
+import { SESSION_IDLE_SECONDS, SESSION_MAX_SECONDS } from '../src/services/session.service.js';
+import { openDb } from '../src/db/database.js';
+import { DEMO_PASSWORD } from '../src/db/seed.js';
+import { sanitizeContent } from '../src/lib/sanitize.js';
 
 let app: ReturnType<typeof createApp>['app'];
 
