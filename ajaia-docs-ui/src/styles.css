@@ -131,6 +131,8 @@ mark { background: #fff3bf; color: inherit; border-radius: 2px; padding: 0 1px; 
 .tool-bold { font-weight: 800; }
 .tool-italic { font-style: italic; font-family: Georgia, serif; }
 .tool-underline { text-decoration: underline; }
+.tool-insert { font-size: 0.9rem; padding: 0 10px; }
+.tool:disabled { opacity: 0.55; cursor: progress; }
 .tool-sep { width: 1px; height: 20px; background: var(--border); margin: 0 6px; }
 .notice { padding: 8px 20px; background: #eef1f5; color: var(--muted); font-size: 0.9rem; border-bottom: 1px solid var(--border); }
 .editor-shell > .alert { margin: 12px 20px; }

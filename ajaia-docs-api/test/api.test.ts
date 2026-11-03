@@ -268,3 +268,29 @@ describe('export', () => {
     await request(app).get(`/api/documents/${doc.id}/export?format=md`).expect(401);
   });
 });
+
+describe('insert from file', () => {
+  it('converts a file for insertion into a document the user can edit', async () => {
+    const alice = await login('alice@ajaia.dev');
+    const bob = await login('bob@ajaia.dev');
+    const carol = await login('carol@ajaia.dev');
+    const { body: doc } = await alice.post('/api/documents').send({ title: 'Draft' }).expect(201);
+    await alice.post(`/api/documents/${doc.id}/shares`).send({ email: 'bob@ajaia.dev', role: 'editor' }).expect(201);
+    await alice.post(`/api/documents/${doc.id}/shares`).send({ email: 'carol@ajaia.dev', role: 'viewer' }).expect(201);
+    const insert = (agent: typeof alice, content: string, name = 'notes.md') =>
+      agent.post(`/api/documents/${doc.id}/import`).attach('file', Buffer.from(content), name);
+
+    const { body } = await insert(bob, '## Risks\n\n- scope <script>alert(1)</script>').expect(200);
+    expect(body).toEqual({ html: '<h2>Risks</h2>\n<ul>\n<li>scope </li>\n</ul>\n', filename: 'notes.md' });
+
+    // The document itself is untouched: the editor inserts the HTML through live editing.
+    expect((await alice.get(`/api/documents/${doc.id}`).expect(200)).body.content).toBe('');
+
+    await insert(carol, 'x').expect(403);
+    await insert(await login('bob@ajaia.dev'), '   \n\n  ', 'empty.txt').expect(400);
+    await insert(alice, '%PDF', 'report.pdf').expect(400);
+    const { body: other } = await bob.post('/api/documents').send({ title: 'Bob only' }).expect(201);
+    await alice.post(`/api/documents/${other.id}/import`).attach('file', Buffer.from('x'), 'a.txt').expect(404);
+  });
+});
+

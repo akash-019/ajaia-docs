@@ -41,6 +41,19 @@ export function createDocumentsController({ documents, access, collab }: Deps) {
       createAndRespond(res, req.user!.id, titleFromFilename(req.file.originalname), content);
     },
 
+    /**
+     * Converts an uploaded .txt/.md/.docx for insertion into an existing document.
+     * Returns sanitized HTML; the editor inserts it at the cursor through the live-editing
+     * channel, so everyone with the document open sees it and the socket's read-only rule applies.
+     */
+    async convertForInsert(req: Request, res: Response) {
+      access.requireEditor(String(req.params.id), req.user!.id);
+      if (!req.file) throw new HttpError(400, 'Attach a file in the "file" field');
+      const html = await fileToHtml(req.file.originalname, req.file.buffer);
+      if (!html.trim()) throw new HttpError(400, 'That file has no content to insert');
+      res.json({ html, filename: req.file.originalname });
+    },
+
     show(req: Request, res: Response) {
       const { doc, role } = access.requireAccess(String(req.params.id), req.user!.id);
       res.json(documentView(doc, role));

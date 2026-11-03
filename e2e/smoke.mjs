@@ -204,6 +204,18 @@ await bob.waitForFunction(() => document.querySelector('.doc-body').textContent.
 check('simultaneous edits converge', (await bodyText(alice)) === (await bodyText(bob)));
 await bob.screenshot({ path: `${SHOTS}/08-live-collaboration.png` });
 
+// Insert a file into the open document: content lands at the cursor and others see it live.
+check('insert button states supported types', (await alice.$eval('.tool-insert', (e) => e.textContent)).includes('.txt, .md, .docx'));
+await alice.click('.doc-body ol li:last-child');
+await alice.keyboard.down('Control'); await alice.keyboard.press('End'); await alice.keyboard.up('Control');
+const appendix = path.join(TMP, 'appendix.md');
+fs.writeFileSync(appendix, '## Appendix\n\n- inserted from a file\n');
+await (await alice.$('.toolbar input[type=file]')).uploadFile(appendix);
+await bob.waitForFunction(() => [...document.querySelectorAll('.doc-body h2')].some((h) => h.textContent.includes('Appendix')), { timeout: 8000 });
+check('insert file into open document, others see it live', (await bodyText(bob)).includes('inserted from a file'));
+await alice.waitForSelector('.alert-info', { timeout: 5000 });
+await bob.screenshot({ path: `${SHOTS}/10-insert-file-live.png` });
+
 // Rename shows up for others live.
 const t = await alice.$('.title-input'); await t.click(); await new Promise((r) => setTimeout(r, 50));
 await t.type('Q4 Launch Plan (final)'); await alice.keyboard.press('Enter');

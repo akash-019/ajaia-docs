@@ -41,6 +41,12 @@ export class ApiService {
     form.append('file', file);
     return firstValueFrom(this.http.post<DocumentDetail>('/api/documents/import', form));
   }
+  /** Converts a file for insertion into an existing document (the editor inserts the HTML). */
+  convertForInsert(id: string, file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return firstValueFrom(this.http.post<{ html: string; filename: string }>(`/api/documents/${id}/import`, form));
+  }
   getDocument(id: string) {
     return firstValueFrom(this.http.get<DocumentDetail>(`/api/documents/${id}`));
   }

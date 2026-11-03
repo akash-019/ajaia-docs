@@ -96,6 +96,19 @@
           <span class="tool-sep" aria-hidden="true"></span>
         }
       }
+      <span class="tool-sep" aria-hidden="true"></span>
+      <button
+        type="button"
+        class="tool tool-insert"
+        [title]="'Insert a .txt, .md or .docx file at the cursor (max ' + maxMb + ' MB)'"
+        aria-label="Insert a file's content at the cursor"
+        [disabled]="inserting()"
+        (mousedown)="$event.preventDefault()"
+        (click)="insertInput.click()"
+      >
+        {{ inserting() ? 'Inserting…' : '📎 Insert file (.txt, .md, .docx)' }}
+      </button>
+      <input #insertInput type="file" hidden [accept]="acceptTypes" (change)="insertFromFile($event)" />
     </div>
   } @else if (doc()) {
     <div class="notice">You have view-only access. Changes by editors appear here live.</div>

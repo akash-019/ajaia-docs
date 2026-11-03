@@ -16,6 +16,7 @@ export function documentRoutes(documents: DocumentsController, shares: SharesCon
   router.patch('/:id', documents.rename);
   router.delete('/:id', documents.remove);
   router.get('/:id/export', documents.exportFile);
+  router.post('/:id/import', uploadSingleFile, documents.convertForInsert);
 
   router.get('/:id/shares', shares.list);
   router.post('/:id/shares', shares.grant);

@@ -52,16 +52,17 @@ I treated the AI as a fast pair programmer. I set the direction and the constrai
 
 ## How I verified correctness, UX and reliability
 
-- **Correctness:** 15 API tests.
+- **Correctness:** 16 API tests.
   - Sign-in: wrong password, lockout, and forged, expired, wrong-algorithm and `alg:none` tokens.
   - Session timeout: sliding renewal, the 7-day cap, and sockets closed on expiry or sign-out.
   - Access control across owner, editor, viewer and stranger, including removal.
   - Search scoping, validation and XSS sanitization.
   - Markdown export, including an export → re-import round trip.
+  - Inserting a file into an existing document: editors only, content sanitized.
   - **Collaboration over real WebSockets:** live sync, viewer edits dropped by the server, live removal and upgrade, outsiders refused, persistence and searchability.
 
   TypeScript strict mode on both apps.
-- **End-to-end:** a 27-check headless-Chrome run with three users signed in at once.
+- **End-to-end:** a 29-check headless-Chrome run with three users signed in at once.
   - Sign-in, create, format, reload persistence, rename, import, search, sharing and the read-only viewer.
   - Typing that appears live for others without a reload, named cursors, simultaneous typing that converges, live rename, live revocation, export (downloaded file, print view, rendered PDF), and session expiry.
 

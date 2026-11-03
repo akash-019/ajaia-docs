@@ -31,7 +31,7 @@ All accounts use the password **`demo1234`**. These are the only accounts: there
 | AI workflow note | [AI_WORKFLOW.md](AI_WORKFLOW.md) |
 | Walkthrough video URL | [VIDEO_URL.txt](VIDEO_URL.txt) |
 | Automated tests: API, including real-WebSocket collaboration | [ajaia-docs-api/test/](ajaia-docs-api/test/) |
-| Automated tests: browser smoke (27 checks) | [e2e/smoke.mjs](e2e/smoke.mjs) |
+| Automated tests: browser smoke (29 checks) | [e2e/smoke.mjs](e2e/smoke.mjs) |
 | Screenshots of the main flows | [docs/screenshots/](docs/screenshots/) |
 | Deployment config | [Dockerfile](Dockerfile), [render.yaml](render.yaml) |
 
@@ -43,7 +43,7 @@ All accounts use the password **`demo1234`**. These are the only accounts: there
 - Bold, italic, underline, H1–H3, bulleted and numbered lists, quote, undo/redo, all persisted across reloads
 - **Real-time co-editing:** live typing, named cursors, presence avatars, simultaneous edits merged, live rename, and offline edits synced on reconnect
 - **Search** across titles and document text, limited to documents you can access, with highlighted snippets
-- Import .txt, .md or .docx as a new editable document, with clear errors for unsupported, corrupt or oversized (> 2 MB) files
+- **File upload (.txt, .md, .docx; max 2 MB):** import as a new editable document, or insert a file's content at the cursor of an open document (it appears live for others). Clear errors for unsupported, corrupt or oversized files.
 - Sharing by email with **Can edit** or **View only**, role changes and removals applied live to open sessions. Owned and shared documents are listed separately.
 - Server-enforced permissions on REST and on the live socket
 - **Password sign-in:** scrypt hashes, JWT session in an httpOnly cookie, lockout after repeated failures
@@ -59,4 +59,4 @@ All accounts use the password **`demo1234`**. These are the only accounts: there
 - No version history or comments.
 - PDF export goes through the browser's print dialog rather than a one-click download.
 
-**Next 2–4 hours:** version history with restore, import into the current document, sign-up with server-side sessions, then Postgres and a persistent deploy with CI. Details are in [ARCHITECTURE.md](ARCHITECTURE.md#next-24-hours).
+**Next 2–4 hours:** version history with restore, attachments on durable storage, sign-up with server-side sessions, then Postgres and a persistent deploy with CI. Details are in [ARCHITECTURE.md](ARCHITECTURE.md#next-24-hours).

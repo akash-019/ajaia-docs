@@ -53,7 +53,7 @@ The UI, REST API and WebSocket ship as one service, one image and one URL. For t
 | **SQLite via `node:sqlite`** | Zero setup, no paid service, no native addon. better-sqlite3 failed on an older glibc. | Single node, and needs a disk to persist. Moving to Postgres is contained to the data access code. |
 | Seeded accounts, **no sign-up** | Keeps scope on the editor; the brief allows seeded users. | Adding accounts means editing the seed. Sign-up is a small next step now that hashing exists. |
 | **Markdown export on the server, PDF via browser print** | The server already has the access check and the latest live content. Markdown is lossless for this schema except underline, which is kept as inline `<u>`. Browser print gives a real PDF with selectable text and no extra infrastructure. | Server-side PDF (headless Chrome) would allow one-click download, but at a large cost in image size, memory and cold start on free hosting. Rejected. |
-| Import creates a **new document** | Clearest product behavior, one code path for every file type. | No "insert into the current doc" yet. |
+| Two import paths, one converter: **new document** from the list, or **insert at the cursor** of an open document | Both reuse the same server-side conversion and sanitization. Insertion happens in the editor, so it's an ordinary live edit: everyone sees it, undo works, and the socket's read-only rule still applies. | The server only converts on insert; it trusts the editor to place the content, which is fine because the live socket enforces who can write. |
 | **Angular 21**, standalone + signals + zoneless; lazy editor route | The requested UI stack. The editor (TipTap + Yjs) loads only when a document is opened. | — |
 
 ## Data model
@@ -74,7 +74,8 @@ Older databases are migrated in place on boot (new columns added and back-filled
 POST /api/auth/login {email, password}   GET /api/auth/me   POST /api/auth/logout
 GET  /api/users                          (signed in; share picker)
 GET  /api/documents?q=                   → { owned[], shared[] } (+ snippet when searching)
-POST /api/documents {title?}             POST /api/documents/import (multipart "file")
+POST /api/documents {title?}             POST /api/documents/import (multipart "file") → new document
+POST /api/documents/:id/import           (multipart "file", editors) → sanitized HTML to insert at the cursor
 GET  /api/documents/:id                  PATCH /api/documents/:id {title}   DELETE (owner)
 GET  /api/documents/:id/export?format=md  (anyone with access; uses live content if the doc is open)
 GET  /api/documents/:id/shares           POST …/shares {email, role}   DELETE …/shares/:userId  (owner)
@@ -85,8 +86,8 @@ Validation uses zod and returns 400 with readable messages. Errors are always `{
 
 ## Quality and verification
 
-- **API tests** (15, Vitest): Markdown export (exact output, export → re-import round trip, access), sign-in (wrong password, unknown email, lockout, and forged, expired, wrong-algorithm and `alg:none` JWTs), session timeout (sliding renewal, the 7-day cap, and live connections closed on expiry or sign-out but kept open by activity), the access lifecycle across all roles, search scoping and wildcards, sanitization, import, and **collaboration over real WebSockets**. The socket tests cover live sync, viewer edits dropped server-side, live removal and upgrade, outsiders and forged tokens refused, persistence to HTML, and live edits becoming searchable.
-- **Browser smoke test** (`e2e/smoke.mjs`, 27 checks, headless Chrome, three users at once): sign-in, formatting persisted, rename, import, search, sharing, read-only viewer, live typing seen by an editor and a viewer without reload, presence and named cursors, simultaneous typing converging, live rename, persistence, live revocation, export (downloaded Markdown file, print view, rendered PDF), and session expiry (redirect to sign-in and back).
+- **API tests** (16, Vitest): insert-from-file (editors only, sanitized, viewers 403, outsiders 404), Markdown export (exact output, export → re-import round trip, access), sign-in (wrong password, unknown email, lockout, and forged, expired, wrong-algorithm and `alg:none` JWTs), session timeout (sliding renewal, the 7-day cap, and live connections closed on expiry or sign-out but kept open by activity), the access lifecycle across all roles, search scoping and wildcards, sanitization, import, and **collaboration over real WebSockets**. The socket tests cover live sync, viewer edits dropped server-side, live removal and upgrade, outsiders and forged tokens refused, persistence to HTML, and live edits becoming searchable.
+- **Browser smoke test** (`e2e/smoke.mjs`, 29 checks, headless Chrome, three users at once): sign-in, formatting persisted, rename, import, search, sharing, read-only viewer, live typing seen by an editor and a viewer without reload, presence and named cursors, simultaneous typing converging, live rename, persistence, live revocation, export (downloaded Markdown file, print view, rendered PDF), and session expiry (redirect to sign-in and back).
 - A clean `npm ci`, production build and pruned production run were checked from a fresh copy (the same steps as the Dockerfile).
 
 ## Deployment
@@ -105,6 +106,6 @@ Scaling past one instance would need Hocuspocus's Redis extension so the instanc
 ## Next 2–4 hours
 
 1. **Version history:** snapshot the Yjs state on store (or every N minutes) into a `document_versions` table, with a restore UI.
-2. **Import into the current document**, and one-click server-side PDF if users ask for it.
+2. **Attachments** stored with a document (needs durable object storage, e.g. S3, rather than the free tier's temporary disk), and one-click server-side PDF if users ask for it.
 3. Sign-up and a server-side session table (logout everywhere, revocation).
 4. Postgres plus a persistent deploy, and CI running the API tests and smoke test on each push.

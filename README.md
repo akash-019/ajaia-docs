@@ -31,7 +31,7 @@ On first boot the app creates a **"Welcome to Ajaia Docs"** document owned by Al
 | **Real-time co-editing** | Everyone with the document open sees changes as they are typed, with other people's named cursors and avatars. Simultaneous edits merge (Yjs CRDT) instead of overwriting each other. A rename reaches everyone live. If the connection drops, edits are kept and sync on reconnect. |
 | Search | Searches titles **and document text** across your own documents and those shared with you, with highlighted matches and a snippet of the surrounding text |
 | Export | **Markdown** download (headings, lists, bold/italic/links kept; underline kept as `<u>`, which imports back unchanged) and **PDF** via the browser's print dialog ("Save as PDF"), with a print layout that shows only the document. Anyone who can open a document can export it. |
-| File import | Upload **.txt, .md or .docx** (max 2 MB). It becomes a new editable document; headings, lists and bold/italic are kept. Images and complex Word layout are dropped. |
+| File import | **Supported file types: .txt, .md, .docx (max 2 MB).** Two ways in:<br>• **Import file** on the documents list turns a file into a **new** editable document, named after the file.<br>• **📎 Insert file** in the editor toolbar inserts a file's content **at the cursor** of the document you're editing (owners and editors). Everyone with the document open sees it live.<br>Headings, lists and bold/italic are kept. Images and complex Word layout are dropped. Any other file type is rejected with a message listing the supported types. |
 | Sharing | Owner shares by email as **Can edit** or **View only**, changes the role or removes access. **My documents** and **Shared with me** are listed separately. Access changes reach open editors immediately: a viewer upgraded to editor gets the toolbar, and a removed user is disconnected. |
 | Access control | Enforced by the API and the live socket. Viewers' edits are dropped by the server, only the owner can share or delete, and anyone without access gets a 404. |
 | Sign-in | Email + password (scrypt-hashed). The session is a JWT in an httpOnly cookie. Repeated failed attempts are locked out for 15 minutes. |
@@ -70,10 +70,10 @@ These cover:
 - session timeout: the idle timeout slides with activity but is capped at 7 days, and live connections close on expiry or sign-out unless activity has renewed the session
 - the owner/editor/viewer access lifecycle, including removing access
 - search, including access scoping and literal `%`/`_`
-- sanitization, import, and Markdown export (including export → re-import giving the same document)
+- sanitization, import (new document and insert into an existing one, with access checks), and Markdown export (including export → re-import giving the same document)
 - **live collaboration over real sockets:** edits sync between users, the server drops viewer edits, removed access takes effect live, a viewer can be upgraded live, outsiders are refused, and live edits are persisted and searchable
 
-There is also a headless-Chrome smoke test of the full UI (27 checks, including two users typing at once, export and session expiry). It needs a running app with a fresh database and a local Chrome:
+There is also a headless-Chrome smoke test of the full UI (29 checks, including two users typing at once, inserting a file live, export and session expiry). It needs a running app with a fresh database and a local Chrome:
 
 ```bash
 cd e2e && npm install

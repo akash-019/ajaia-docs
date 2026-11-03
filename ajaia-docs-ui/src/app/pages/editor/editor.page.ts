@@ -21,7 +21,7 @@ import StarterKit from '@tiptap/starter-kit';
 import * as Y from 'yjs';
 import { ApiService, errorMessage } from '../../core/api.service';
 import { AuthService } from '../../core/auth';
-import { DocumentDetail, Role } from '../../core/models';
+import { DocumentDetail, MAX_UPLOAD_MB, Role, SUPPORTED_IMPORT_TYPES } from '../../core/models';
 import { SharePanel } from './share-panel';
 
 /** Pushed by the server over the collaboration socket (see ajaia-docs-api/src/services/collab.service.ts). */
@@ -94,6 +94,9 @@ export class EditorPage implements AfterViewInit, OnDestroy {
   private host = viewChild.required<ElementRef<HTMLElement>>('editorHost');
 
   protected readonly tools = TOOLS;
+  protected readonly acceptTypes = SUPPORTED_IMPORT_TYPES;
+  protected readonly maxMb = MAX_UPLOAD_MB;
+  protected inserting = signal(false);
   protected doc = signal<DocumentDetail | null>(null);
   protected role = signal<Role | null>(null);
   protected loadError = signal('');
@@ -221,6 +224,32 @@ export class EditorPage implements AfterViewInit, OnDestroy {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       this.flash(`Export failed: ${errorMessage(err)}`);
+    }
+  }
+
+  /**
+   * Inserts a .txt/.md/.docx file's content at the cursor. The server converts and
+   * sanitizes it; inserting through the editor makes it a normal live edit for everyone.
+   */
+  protected async insertFromFile(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // allow choosing the same file again
+    const doc = this.doc();
+    if (!file || !doc || !this.editor) return;
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      this.flash(`"${file.name}" is larger than ${MAX_UPLOAD_MB} MB.`);
+      return;
+    }
+    this.inserting.set(true);
+    try {
+      const { html } = await this.api.convertForInsert(doc.id, file);
+      this.editor.chain().focus().insertContent(html).run();
+      this.flash(`Inserted the content of "${file.name}".`);
+    } catch (err) {
+      this.flash(`Could not insert "${file.name}": ${errorMessage(err)}`);
+    } finally {
+      this.inserting.set(false);
     }
   }
 
