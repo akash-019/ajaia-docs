@@ -81,6 +81,8 @@ cd e2e && npm install
 BASE=http://localhost:3000 CHROME_PATH=/usr/bin/google-chrome npm run smoke   # also writes docs/screenshots/
 ```
 
+`npm run reset-recovery` (in `e2e/`, after `npm run build`) checks that a tab left open while the server's database is reset (as on a free-tier redeploy) recovers to the new copy instead of merging its old one into it.
+
 ### Configuration
 
 Settings come from environment variables. For local runs, put them in `ajaia-docs-api/.env`; it's loaded at startup and is not committed:

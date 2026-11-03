@@ -49,12 +49,13 @@ I treated the AI as a fast pair programmer. I set the direction and the constrai
 | API routes mixed SQL, access checks and response shaping in one file | Harder to read and change as features grew | I asked for an MVC structure: models, views, controllers, services, routes. It was done as a refactor only, with no behavior change, and the existing 15 API tests and 27 browser checks passed unchanged before and after. |
 | My first answer on attachments: "skip, they'd vanish on the free tier's temporary disk" | When challenged, that reasoning didn't hold: documents vanish there too | Stored attachment bytes in SQLite next to the documents. They're exactly as durable as everything else, deleted with their document, and need no paid storage. Strict type allowlist and forced-download headers keep files from running in the app. |
 | Real bug found by testing the deployed app: TipTap's "trailing node" feature added an empty paragraph whenever a document ending in a list was opened | Merely opening a document counted as an edit. For a viewer, that local change was dropped by the server, so after a live upgrade to editor their typing silently never reached anyone ("Saving…" forever). Earlier tests missed it because their documents ended in a paragraph. | Turned off trailing node (in both the browser and server editor configuration), and the editor now restarts its live session from the server's copy whenever the user's role changes. Added regression checks: opening doesn't edit; viewer → editor → viewer → editor, live, on a document that ends in a list. |
+| Second bug found on the live site: the welcome document's text appeared **4 times** | Each redeploy resets the free-tier database and re-creates the welcome document with the same id. A browser tab left open reconnected and the CRDT merged its old copy into the new one. I reproduced it locally (1 copy → 2) before changing anything. | Live sessions now carry the document's creation stamp. The server refuses a tab holding an older copy before it can sync, and the editor reloads the current version. Added an API test and `e2e/reset-recovery.mjs`, which restarts a real server on a wiped database with a tab open. |
 | Search box showed two clear buttons | Chrome's built-in clear button plus ours | Hid the native one |
 | Server: idle WebSocket timeouts | Hocuspocus closes connections it hasn't heard from | Server pings each socket and marks it alive on pong |
 
 ## How I verified correctness, UX and reliability
 
-- **Correctness:** 18 API tests.
+- **Correctness:** 19 API tests.
   - Sign-in: wrong password, lockout, and forged, expired, wrong-algorithm and `alg:none` tokens.
   - Session timeout: sliding renewal, the 7-day cap, and sockets closed on expiry or sign-out.
   - Access control across owner, editor, viewer and stranger, including removal.

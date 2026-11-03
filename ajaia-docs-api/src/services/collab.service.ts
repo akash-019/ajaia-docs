@@ -61,10 +61,14 @@ export function createCollabService({ documents, access, sessions }: CollabDeps,
     debounce: options.debounce ?? 1000,
     maxDebounce: options.maxDebounce ?? 5000,
 
-    async onAuthenticate({ documentName, requestHeaders, connectionConfig }) {
+    async onAuthenticate({ documentName, requestHeaders, connectionConfig, token }) {
       const session = sessions.fromCookieHeader(requestHeaders.get('cookie'));
       const role = session ? access.roleOf(documentName, session.userId) : null;
       if (!session || !role) throw new Error('Not allowed');
+      // The client must name the document instance it holds (its createdAt). If the server's
+      // document was re-created (e.g. the database was reset on redeploy), a tab still holding
+      // the old copy is refused before any of its state can merge into the new one.
+      if (token !== documents.findById(documentName)?.createdAt) throw new Error('Stale document');
       connectionConfig.readOnly = !canEdit(role);
       return { userId: session.userId, sid: session.sid, expiresAt: session.expiresAt } satisfies CollabContext;
     },

@@ -154,26 +154,28 @@ export class EditorPage implements AfterViewInit, OnDestroy {
     this.setTitle(doc.title);
     void this.loadAttachments();
 
-    this.startSession(doc.id);
+    this.startSession(doc);
   }
 
   /**
    * Connects the live-editing session: a fresh Yjs document synced from the server,
    * bound to a new editor. Restarted when the user's role changes (see onEvent).
    */
-  private startSession(docId: string) {
+  private startSession(doc: DocumentDetail) {
     const me = this.auth.user()!;
     const ydoc = new Y.Doc();
     this.provider = new HocuspocusProvider({
       url: collabUrl(),
-      name: docId,
+      name: doc.id,
       document: ydoc,
-      token: 'session-cookie', // the server authenticates with the session cookie
+      // The session cookie authenticates the user; the token names the document instance this
+      // tab holds, so a stale copy is refused if the server's document was re-created.
+      token: doc.createdAt,
       onStatus: ({ status }) => this.connection.set(status),
       onSynced: ({ state }) => state && this.synced.set(true),
       onUnsyncedChanges: ({ number }) => this.unsynced.set(number),
       onAuthenticated: ({ scope }) => this.editor?.setEditable(scope === 'read-write' && this.canEdit()),
-      onAuthenticationFailed: () => this.end('You no longer have access to this document.'),
+      onAuthenticationFailed: () => void this.recoverOrEnd(),
       onStateless: ({ payload }) => this.onEvent(JSON.parse(payload) as CollabEvent),
       onAwarenessChange: ({ states }) => {
         const seen = new Map<string, Peer>();
@@ -207,6 +209,34 @@ export class EditorPage implements AfterViewInit, OnDestroy {
       editorProps: { attributes: { class: 'doc-body', spellcheck: 'true', 'aria-label': 'Document content' } },
       onTransaction: () => this.tick.update((n) => n + 1),
     });
+  }
+
+  /**
+   * The server refused the live session. If the document itself was re-created (for example the
+   * database was reset on redeploy), drop this tab's stale copy and load the current one;
+   * otherwise access was removed.
+   */
+  private async recoverOrEnd() {
+    const held = this.doc();
+    if (!held || this.ended()) return;
+    try {
+      const current = await this.api.getDocument(held.id);
+      if (current.createdAt !== held.createdAt) {
+        this.doc.set(current);
+        this.role.set(current.role);
+        this.setTitle(current.title);
+        void this.loadAttachments();
+        setTimeout(() => {
+          this.stopSession();
+          this.startSession(current);
+        });
+        this.flash('This document was reset on the server. Showing the current version.');
+        return;
+      }
+    } catch {
+      // 404: no access any more (401 is handled by the session interceptor).
+    }
+    this.end('You no longer have access to this document.');
   }
 
   private stopSession() {
@@ -356,11 +386,11 @@ export class EditorPage implements AfterViewInit, OnDestroy {
         // copy, so nothing this browser held locally can block or leak into later edits.
         // Deferred: this runs inside the connection's own message callback.
         if (couldEdit !== this.canEdit() && this.doc()) {
-          const docId = this.doc()!.id;
+          const doc = this.doc()!;
           setTimeout(() => {
             if (this.ended()) return;
             this.stopSession();
-            this.startSession(docId);
+            this.startSession(doc);
           });
         }
         this.flash(event.role === 'editor' ? 'You can now edit this document.' : 'Your access changed to view only.');

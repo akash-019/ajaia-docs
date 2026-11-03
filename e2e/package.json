@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Headless-Chrome smoke test of the main user flows",
   "scripts": {
-    "smoke": "node smoke.mjs ../docs/screenshots"
+    "smoke": "node smoke.mjs ../docs/screenshots",
+    "reset-recovery": "node reset-recovery.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "^24.0.0"

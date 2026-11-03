@@ -59,7 +59,7 @@ interface Client {
 }
 
 /** Connects like the browser does: same cookie, same document name. */
-function connect(cookie: string, docId: string): Client {
+function connect(cookie: string, docId: string, epoch: string): Client {
   class CookieWebSocket extends WebSocket {
     constructor(url: string, protocols?: string | string[]) {
       super(url, protocols, { headers: { cookie } });
@@ -74,7 +74,7 @@ function connect(cookie: string, docId: string): Client {
     websocketProvider,
     name: docId,
     document: doc,
-    token: 'session-cookie',
+    token: epoch, // the document's createdAt
     onAuthenticated: ({ scope }) => resolveScope(scope),
     onAuthenticationFailed: () => resolveScope('denied'),
     onStateless: ({ payload }) => events.push(JSON.parse(payload).type),
@@ -116,9 +116,9 @@ describe('real-time collaboration', () => {
     await alice.agent.post(`/api/documents/${doc.id}/shares`).send({ email: 'bob@ajaia.dev', role: 'editor' });
     await alice.agent.post(`/api/documents/${doc.id}/shares`).send({ email: 'carol@ajaia.dev', role: 'viewer' });
 
-    const a = connect(alice.cookie, doc.id);
-    const b = connect(bob.cookie, doc.id);
-    const c = connect(carol.cookie, doc.id);
+    const a = connect(alice.cookie, doc.id, doc.createdAt);
+    const b = connect(bob.cookie, doc.id, doc.createdAt);
+    const c = connect(carol.cookie, doc.id, doc.createdAt);
     expect(await a.scope).toBe('read-write');
     expect(await b.scope).toBe('read-write');
     expect(await c.scope).toBe('readonly');
@@ -161,8 +161,8 @@ describe('real-time collaboration', () => {
 
     // Someone with no access to a document cannot open it live.
     const { body: secret } = await alice.agent.post('/api/documents').send({ title: 'Secret' }).expect(201);
-    expect(await connect(carol.cookie, secret.id).scope).toBe('denied'); // not shared with Carol
-    expect(await connect(`ajaia_session=${sessionToken({}, 'wrong-secret')}`, secret.id).scope).toBe('denied');
+    expect(await connect(carol.cookie, secret.id, secret.createdAt).scope).toBe('denied'); // not shared with Carol
+    expect(await connect(`ajaia_session=${sessionToken({}, 'wrong-secret')}`, secret.id, secret.createdAt).scope).toBe('denied');
   });
 
   it('upgrades a viewer to editor without reconnecting', async () => {
@@ -171,8 +171,8 @@ describe('real-time collaboration', () => {
     const { body: doc } = await alice.agent.post('/api/documents').send({}).expect(201);
     await alice.agent.post(`/api/documents/${doc.id}/shares`).send({ email: 'carol@ajaia.dev', role: 'viewer' });
 
-    const a = connect(alice.cookie, doc.id);
-    const c = connect(carol.cookie, doc.id);
+    const a = connect(alice.cookie, doc.id, doc.createdAt);
+    const c = connect(carol.cookie, doc.id, doc.createdAt);
     expect(await c.scope).toBe('readonly');
     await a.scope;
 
@@ -188,7 +188,7 @@ describe('real-time collaboration', () => {
       .post('/api/documents/import')
       .attach('file', Buffer.from('# Title\n\n- one\n- two'), 'notes.md')
       .expect(201);
-    const a = connect(alice.cookie, doc.id);
+    const a = connect(alice.cookie, doc.id, doc.createdAt);
     await a.scope;
     await until(() => text(a.doc).includes('one'));
     expect(text(a.doc)).toContain('<heading level="1">Title</heading>');
@@ -201,12 +201,12 @@ describe('real-time collaboration', () => {
     const quiet = await alice.agent.post('/api/documents').send({}).expect(201);
 
     // A session that expires in ~2 seconds and sees no activity is disconnected.
-    const idle = connect(`ajaia_session=${sessionToken({ sid: 'idle', exp: nowS() + 2 })}`, doc.id);
+    const idle = connect(`ajaia_session=${sessionToken({ sid: 'idle', exp: nowS() + 2 })}`, doc.id, doc.createdAt);
     expect(await idle.scope).toBe('read-write');
 
     // Same short expiry, but activity over HTTP renews the session, which also extends the socket.
     const activeCookie = `ajaia_session=${sessionToken({ sid: 'active', iat: nowS() - 600, exp: nowS() + 2 })}`;
-    const active = connect(activeCookie, quiet.body.id);
+    const active = connect(activeCookie, quiet.body.id, quiet.body.createdAt);
     expect(await active.scope).toBe('read-write');
     await request(app).get('/api/documents').set('Cookie', activeCookie).expect(200);
 
@@ -215,9 +215,27 @@ describe('real-time collaboration', () => {
     expect(active.events).not.toContain('session-ended');
 
     // Signing out closes that session's live connections (e.g. other tabs).
-    const tab = connect(alice.cookie, doc.id);
+    const tab = connect(alice.cookie, doc.id, doc.createdAt);
     expect(await tab.scope).toBe('read-write');
     await alice.agent.post('/api/auth/logout').expect(204);
     await until(() => tab.events.includes('session-ended'));
   });
+
+  it('refuses a tab holding a copy from before the document was re-created, so nothing merges', async () => {
+    const alice = await login('alice@ajaia.dev');
+    const { body: doc } = await alice.agent.post('/api/documents').send({ title: 'Fresh' }).expect(201);
+
+    // A tab that still holds content from an older instance of this document (e.g. before a
+    // database reset) reconnects with that instance's stamp: refused before syncing anything.
+    const stale = connect(alice.cookie, doc.id, '2020-01-01T00:00:00.000Z');
+    typeParagraph(stale.doc, 'stale copy from before the reset');
+    expect(await stale.scope).toBe('denied');
+
+    const current = connect(alice.cookie, doc.id, doc.createdAt);
+    expect(await current.scope).toBe('read-write');
+    await new Promise((r) => setTimeout(r, 300));
+    expect(text(current.doc)).not.toContain('stale copy');
+    expect(await connect(alice.cookie, doc.id, 'session-cookie').scope).toBe('denied'); // tabs running older app code
+  });
 });
+
