@@ -74,7 +74,7 @@ These cover:
 - sanitization, import (new document and insert into an existing one, with access checks), attachments (type/size/count limits, permissions, safe download headers, removal with the document), and Markdown export (including export → re-import giving the same document)
 - **live collaboration over real sockets:** edits sync between users, the server drops viewer edits, removed access takes effect live, a viewer can be upgraded live, outsiders are refused, and live edits are persisted and searchable
 
-There is also a headless-Chrome smoke test of the full UI (36 checks, including two users typing at once, live role changes, inserting a file live, attachments, export and session expiry). It needs a running app with a fresh database and a local Chrome:
+There is also a headless-Chrome smoke test of the full UI (37 checks, including two users typing at once, live role changes, inserting a file live, attachments, export and session expiry). It needs a running app with a fresh database and a local Chrome:
 
 ```bash
 cd e2e && npm install

@@ -166,6 +166,7 @@ try {
   console.log('Search state at failure:', JSON.stringify(await alice.evaluate(() => ({ input: document.querySelector('.search input').value, rows: [...document.querySelectorAll('.doc-row')].map((r) => r.textContent.replace(/\s+/g, ' ').trim()), empty: document.querySelector('.empty')?.textContent }))));
   throw e;
 }
+check('search box keeps exactly what was typed (spaces included)', (await alice.$eval('.search input', (e) => e.value)) === 'scope creep');
 check('search finds text inside documents', (await alice.$eval('.doc-row .doc-title', (e) => e.textContent)).includes('meeting-notes'));
 await alice.screenshot({ path: `${SHOTS}/05-search.png` });
 await alice.$eval('.search input', (el) => (el.value = ''));

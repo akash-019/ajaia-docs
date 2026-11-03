@@ -34,7 +34,6 @@ const SEARCH_DEBOUNCE_MS = 250;
           placeholder="Search titles and text"
           aria-label="Search documents"
           maxlength="100"
-          [value]="query()"
           (input)="onSearch(search.value)"
           (keydown.escape)="onSearch(''); search.value = ''"
         />
