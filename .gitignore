@@ -1,6 +1,13 @@
-# Dependencies and build output (any folder)
+# Dependencies (the first line covers every folder; the rest name each app explicitly)
 node_modules/
+ajaia-docs-api/node_modules/
+ajaia-docs-ui/node_modules/
+e2e/node_modules/
+
+# Build output
 dist/
+ajaia-docs-api/dist/
+ajaia-docs-ui/dist/
 .angular/
 coverage/
 *.tsbuildinfo
