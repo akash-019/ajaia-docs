@@ -1,0 +1,119 @@
+@if (loadError() || ended()) {
+  <section class="page">
+    <p class="alert alert-error" role="alert">{{ loadError() || ended() }}</p>
+    <a routerLink="/" class="btn">← Back to documents</a>
+  </section>
+}
+
+<div class="editor-shell" [hidden]="!!loadError() || !!ended()">
+  <div class="editor-top">
+    <a routerLink="/" class="btn btn-ghost" title="All documents">←</a>
+
+    @if (doc(); as doc) {
+      <div class="title-block">
+        <input
+          class="title-input"
+          aria-label="Document title"
+          maxlength="200"
+          [value]="titleDraft()"
+          [readOnly]="!canEdit()"
+          (focus)="selectTitle(titleInput)"
+          (blur)="commitTitle(titleInput)"
+          (keydown.enter)="titleInput.blur()"
+          #titleInput
+        />
+        <div class="meta muted small">
+          @if (role() === 'owner') {
+            Owned by you
+          } @else {
+            Owned by {{ doc.owner.name }} ·
+            <span class="badge" [class.badge-view]="role() === 'viewer'">
+              {{ role() === 'editor' ? 'Can edit' : 'View only' }}
+            </span>
+          }
+          @if (titleError()) {
+            <span class="text-error"> · {{ titleError() }}</span>
+          }
+        </div>
+      </div>
+
+      <span class="save-status" [attr.data-tone]="status().tone" aria-live="polite">{{ status().text }}</span>
+
+      @if (peers().length) {
+        <div class="presence" aria-label="Also viewing">
+          @for (peer of peers(); track peer.id) {
+            <span class="avatar avatar-peer" [style.background]="peer.color" [title]="peer.name + ' is here'">
+              {{ peer.name[0] }}
+            </span>
+          }
+        </div>
+      }
+
+      <div class="menu">
+        <button
+          class="btn"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="exportOpen()"
+          (click)="exportOpen.set(!exportOpen())"
+        >
+          Export ▾
+        </button>
+        @if (exportOpen()) {
+          <div class="menu-list" role="menu">
+            <button role="menuitem" (click)="downloadMarkdown()">
+              Markdown (.md)<span class="muted small block">Download a Markdown file</span>
+            </button>
+            <button role="menuitem" (click)="printPdf()">
+              PDF<span class="muted small block">Print, then choose "Save as PDF"</span>
+            </button>
+          </div>
+        }
+      </div>
+
+      <button class="btn btn-primary" (click)="shareOpen.set(!shareOpen())">
+        {{ role() === 'owner' ? 'Share' : 'People' }}
+      </button>
+    }
+  </div>
+
+  @if (canEdit()) {
+    <div class="toolbar" role="toolbar" aria-label="Formatting">
+      @for (tool of tools; track tool.id) {
+        @if ('run' in tool) {
+          <button
+            type="button"
+            class="tool"
+            [class.active]="activeTools().has(tool.id)"
+            [attr.aria-pressed]="activeTools().has(tool.id)"
+            [title]="tool.title"
+            [attr.aria-label]="tool.title"
+            (mousedown)="$event.preventDefault()"
+            (click)="runTool(tool)"
+          >
+            <span [class]="'tool-' + tool.id">{{ tool.label }}</span>
+          </button>
+        } @else {
+          <span class="tool-sep" aria-hidden="true"></span>
+        }
+      }
+    </div>
+  } @else if (doc()) {
+    <div class="notice">You have view-only access. Changes by editors appear here live.</div>
+  }
+
+  @if (notice()) {
+    <div class="alert alert-info" role="status">{{ notice() }}</div>
+  }
+
+  <div class="editor-body">
+    <div class="paper">
+      <div #editorHost [hidden]="!synced()"></div>
+      @if (!synced() && !loadError()) {
+        <p class="muted">Loading…</p>
+      }
+    </div>
+    @if (shareOpen() && doc(); as doc) {
+      <app-share-panel [doc]="doc" (closed)="shareOpen.set(false)" />
+    }
+  </div>
+</div>

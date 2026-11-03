@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.angular/
+ajaia-docs-api/data/
+*.db
+*.db-shm
+*.db-wal
+.env

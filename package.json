@@ -1,0 +1,12 @@
+{
+  "name": "ajaia-docs",
+  "private": true,
+  "description": "Lightweight collaborative document editor: Angular UI + Express/SQLite API",
+  "scripts": {
+    "install:all": "npm --prefix ajaia-docs-api ci && npm --prefix ajaia-docs-ui ci",
+    "dev": "npx -y concurrently@9 -n api,ui -c blue,green \"npm --prefix ajaia-docs-api run dev\" \"npm --prefix ajaia-docs-ui start\"",
+    "build": "npm --prefix ajaia-docs-ui run build && npm --prefix ajaia-docs-api run build",
+    "start": "npm --prefix ajaia-docs-api start",
+    "test": "npm --prefix ajaia-docs-api test"
+  }
+}

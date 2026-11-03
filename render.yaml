@@ -1,0 +1,18 @@
+# Render Blueprint: New > Blueprint > pick this repo.
+services:
+  - type: web
+    name: ajaia-docs
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+    # Free plan has no persistent disk: data lives until the instance restarts or redeploys,
+    # then the demo users and welcome document are re-seeded. For durable data, use a paid
+    # plan and uncomment the disk below (DB_PATH already points at /data).
+    # disk:
+    #   name: data
+    #   mountPath: /data
+    #   sizeGB: 1

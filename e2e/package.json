@@ -1,0 +1,12 @@
+{
+  "name": "ajaia-docs-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Headless-Chrome smoke test of the main user flows",
+  "scripts": {
+    "smoke": "node smoke.mjs ../docs/screenshots"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}
